@@ -8,6 +8,7 @@ import random
 from fake_useragent import UserAgent
 import os
 
+# 'https://hobbyka.ru/product/skameyka_ulichnaya_litsey/' глянуть
 class Parser:
     def __init__(self):
         self.data = []
