@@ -26,7 +26,7 @@ class Parser:
 
     #     return product_urls
 
-#sdg
+    #sdg
     def parsing_products(self):
 
         # product_urls = self.collect_all_pages()

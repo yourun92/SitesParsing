@@ -13,8 +13,8 @@ class Parser:
         self.data = []
         self.ind = 0
         self.ua = UserAgent()
-        
-    
+
+
     def collect_all_pages(self):
 
         response = requests.get(url=self.url)
@@ -23,7 +23,7 @@ class Parser:
 
         urls = soup.find_all('loc')
         product_urls = [u for u in [url.text for url in urls] if u.endswith('/')]
-        
+
 
         return product_urls
 
@@ -48,10 +48,21 @@ class Parser:
 
                 url = url
                 try:
-                    category = ' > '.join(url.split('/')[-4:])[:-2]
+                    path = ' > '.join(url.split('/')[-4:])[:-2]
+                except:
+                    path = ''
+
+                try:
+                    category = soup.select_one('meta[property="product:category"]')['content']
                 except:
                     category = ''
-                
+
+                try:
+                    availability = soup.select_one('meta[property="product:availability"]')['content']
+                except:
+                    availability = ''
+
+
                 try:
                     image = soup.select_one('.woocommerce-product-gallery__image a').get('href')
                 except:
@@ -61,25 +72,27 @@ class Parser:
                     title = soup.select_one('.product_title.entry-title.elementor-heading-title.elementor-size-default').text.strip()
                 except:
                     title = ''
-                
+
                 try:
                     article = soup.select('.elementor-heading-title.elementor-size-default')[1].text.strip()
                 except:
                     article = ''
-                
+
                 try:
-                    main_description = '\n\n'.join([desc.text for desc in soup.select_one(".woocommerce-product-details__short-description").select('p, h5')][:-2])
+                    main_description = soup.select_one('meta[name="description"]')['content'].strip()
                 except:
                     main_description = ''
-                
-                # price = soup.select_one('.product__price')
-                # price = price.text.strip() if price else ''
-                
+
+                try:
+                    price = soup.select_one('meta[property="product:price:amount"]')['content']
+                except:
+                    price = ''
+
                 try:
                     description = soup.select(".woocommerce-product-details__short-description .table-box")[-1].select('td')[3].text
                 except:
                     description = ''
-                
+
                 try:
                     properties = {i.split(':')[0].strip():i.split(':')[1].strip() for i in soup.select(".woocommerce-product-details__short-description .table-box")[-1].select('td')[2].text.split('\n')}
                 except:
@@ -87,14 +100,16 @@ class Parser:
 
                 # Объединяем основные поля и свойства
                 product_data = {
+                    'Название': title,
                     'url': url,
-                    'category': category,
-                    'image': image,
-                    'title': title,
-                    'article': article,
-                    'main_description': main_description,
-                    # 'price': price,
-                    'description': description,
+                    'Путь': path,
+                    'Категория': category,
+                    'Картинка': image,
+                    'Артикул': article,
+                    'Описание': main_description,
+                    'Цена': price,
+                    'Доп описание': description,
+                    'Доступность': availability
                 }
 
                 product_data.update(properties)
@@ -118,20 +133,13 @@ class Parser:
                 print(f"Ошибка при обработке {url}: {e}")
                 continue
 
-            
 
-   
+
+
 
 parser = Parser()
-parser.parsing_products()
+print(parser.parsing_products())
 
 
 df = pd.DataFrame(parser.data)
 df.to_excel('mafproject.xlsx', index=False)
-
-
-
-
-
-
-
