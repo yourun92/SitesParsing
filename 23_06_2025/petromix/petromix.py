@@ -8,35 +8,36 @@ import random
 from fake_useragent import UserAgent
 import os
 import sys
+from selenium import webdriver
+from selenium.webdriver.chrome.service import Service
+from selenium.webdriver.chrome.options import Options
 
 
 class Parser:
     def __init__(self):
-        self.url = 'https://ant-snab.ru/index.php?route=extension/feed/google_sitemap'
+        self.url = 'https://www.rastro.ru/catalogue/gidroisoliatsia-main/'
         self.data = []
         self.ind = 0
         self.ua = UserAgent()
 
 
+    def get_soup(self, url):
+        response = requests.get(url=url, timeout=30)
+        response.encoding = 'utf-8'
+        soup = BeautifulSoup(response.text, 'lxml')
+        return soup
+
     def collect_all_pages(self):
 
-        response = requests.get(url=self.url)
-        response.encoding = 'utf-8'
-        soup = BeautifulSoup(response.text, 'xml')
+        products_urls = ['https://www.petromix.ru/' + i.select_one('a')['href'] for i in self.get_soup('https://www.petromix.ru/catalog/').select('.item_box.category-item')]
 
-        product_urls = [i.find('loc').text for i in soup.find_all('url') if 'products' in i.find('loc').text]
-
-
-        return product_urls
-
+        return products_urls
 
     def parsing_products(self):
-
         product_urls = self.collect_all_pages()
-
         print(f'Всего товаров - {len(product_urls)}')
-        for url in product_urls:
 
+        for url in product_urls:
             try:
                 headers = {
                     'User-Agent': self.ua.random,
@@ -52,108 +53,91 @@ class Parser:
                 url = url
 
                 try:
-                    meta_description = soup.select_one('meta[name="description"]').get('content')
+                    meta_description = soup.select_one('[name="description"]').get('content').strip()
                 except:
                     meta_description = ''
 
+
                 try:
-                    meta_title = soup.select_one('meta[property="og:title"]').get('content')
+                    meta_title = soup.select_one('title').text.strip()
                 except:
                     meta_title = ''
 
                 try:
-                    title = soup.select_one('.item_card_product h1').text.strip()
+                    title = soup.select_one('.item_title').text.strip()
                 except:
-                    title = ''
-                if title == '':
-                    continue
+                    title  = ''
 
                 try:
-                    article = soup.select_one('.manufacturer__box.test333').select_one('div[itemprop="sku"]').text.split(':')[-1].strip()
+                    article = ''
                 except:
                     article = ''
 
-
                 try:
-                    path = ' > '.join([i.text.strip() for i in soup.select_one('.breadcrumbs').select('span') if i.text.strip()])
+                    path = ' > '.join([i.text.strip() for i in soup.select_one('.breadcrumbs').select('li')])
                 except:
                     path = ''
 
                 try:
-                    category = soup.select_one('.active._active').select_one('a').text.strip()
+                    category = soup.select_one('[property="article:section"]')['content']
                 except:
                     category = ''
 
-
-        #         try:
-        #             availability = soup.select_one('meta[property="product:availability"]')['content']
-        #         except:
-        #             availability = ''
-
+                # if soup.select_one('.v_nalichii') and len(soup.select('.v_nalichii')) == 1 and not soup.select_one('.sort_title'):
+                #     availability = soup.select_one('.v_nalichii').text.strip()
+                # elif soup.select_one('.no_v_nalichii') and len(soup.select('.no_v_nalichii')) == 1 and not soup.select_one('.sort_title'):
+                #     availability = soup.select_one('.no_v_nalichii').text.strip()
+                # else:
+                #     availability = 'На удаление'
+                #     continue
 
                 try:
-                    image = soup.select_one('.wrp_fly_image').get('src')
+                    image = 'https://www.rastro.ru' + soup.select_one(f'[alt="{title}"]').get('src')
                 except:
                     image = ''
 
-
                 try:
-                    gallery = ' | '.join([i['href'] for i in soup.select_one('.tovar_mini_gallery').select('[data-fancybox="gallery"]')])
+                    gallery = ''
                 except:
                     gallery = ''
 
-
                 try:
-                    main_description = soup.select_one('.description-mini').text.strip()
+                    main_description = soup.select_one('.goods_upper_description__anons').text.strip()
                 except:
                     main_description = ''
 
                 try:
-                    _price = soup.select_one('.wholesale.wholesale2')
-                    if _price.select_one('.wholesale-price._oldprice'):
-                        price = _price.select_one('.product_old_price.product_old_price2').text.replace('₽', '').strip()
-                    else:
-                        price = _price.select_one('#price').get('data-value').split('.')[0]
-                except:
-                    price = ''
-
-                try:
-                    tech_characteristics = {}
-                    for i in soup.select_one('.table.table_desc').select_one('tbody').select('tr'):
-                        tds = i.select('td')
-                        key = tds[0].text
-                        value = tds[1].text
-                        measure = tds[2].text
-                        tech_characteristics[key] = value + ' ' + measure
-
-                except:
-                    tech_characteristics = {}
-
-
-                try:
-                    characteristics = {}
-                    for i in soup.select_one('.char_list').select('tr'):
-                        key_elem = i.select_one('.char_row_cap')
-                        val_elem = i.select_one('.char_row_values')
-                        if key_elem and val_elem:
-                            key = key_elem.text.strip()
-                            value = val_elem.text.strip()
-                            characteristics[key] = value
-
-                except:
-                    characteristics = {}
-
-                characteristics.update(tech_characteristics)
-
-
-                try:
-                    description = soup.select_one('.info-block.info-block2').text.strip()
+                    description = soup.select('.textpage-inside')[1].text
                 except:
                     description = ''
 
+                try:
+                    price = soup.select_one('.item_price').text.replace('₽', '').strip()
+                except:
+                    price = ''
 
+                # try:
+                #     characteristics = {}
+                #     for i in [i for i in soup.select_one('.b-single-item__info-table').select('tr')[1:-1] if i.select_one('.title')]:
+                #         key = i.select_one('.title').text.strip()
+                #         value = [j.get_text(separator=' ').replace('\n', '').strip() for j in i.select('.ammount')]
+                #         characteristics[key] = value
 
-                # Объединяем основные поля и свойства
+                # except:
+                #     characteristics = {}
+
+                try:
+                    characteristics = {}
+                    for i in soup.select_one('.textpage-inside')[2].select_one('table').select('tr'):
+                        key = i.select('td')[0].text.strip()
+                        value = i.select('td')[-1].text.strip()
+                        characteristics[key] = value
+
+                except:
+                    characteristics = {}
+
+                # characteristics.update(tech_characteristics)
+
                 product_data = {
                     'Название': title,
                     'url': url,
@@ -167,14 +151,13 @@ class Parser:
                     'Описание': main_description,
                     'Цена': price,
                     'Доп описание': description,
-                    'Компания': 'Ант-Снаб',
                     # 'Доступность': availability
                 }
 
                 product_data.update(characteristics)
                 self.data.append(product_data)
-
                 self.ind += 1
+
                 if self.ind % 50 == 0:
                     print(f'Обработано {self.ind} страниц')
 
@@ -193,13 +176,12 @@ class Parser:
                 continue
 
 
-
 parser = Parser()
 parser.parsing_products()
 
 
 df = pd.DataFrame(parser.data)
-correct_path = os.path.join('23_06_2025', 'ant_snab', 'ant_snab_1.xlsx')
+correct_path = os.path.join('23_06_2025', 'petromix', 'petromix.xlsx')
 
 try:
     df.to_excel(correct_path, index=False)

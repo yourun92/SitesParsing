@@ -146,7 +146,7 @@ class Parser:
                             characteristics = {k:v.text.strip() for k,v in zip(keys, values)}
                             # Объединяем основные поля и свойства
                             product_data = {
-                                'Название': title,
+                                'Название': title + ' ' + characteristics.get('Модель', '').strip(),
                                 'url': url,
                                 'meta_description': meta_description,
                                 'meta_title': meta_title,
@@ -173,7 +173,7 @@ class Parser:
                             characteristics[key] = value
 
                         product_data = {
-                                'Название': title,
+                                'Название': title + ' ' + characteristics.get('Модель', '').strip(),
                                 'url': url,
                                 'meta_description': meta_description,
                                 'meta_title': meta_title,

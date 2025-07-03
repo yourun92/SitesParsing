@@ -13,20 +13,22 @@ from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
-
+from selenium.webdriver.chrome.options import Options
+import undetected_chromedriver as uc
+import cloudscraper
 
 class Parser:
     def __init__(self):
-        driver_options = webdriver.ChromeOptions()
-        self.ua = UserAgent()
-        driver_options.add_argument(f'user-agent={self.ua.random}')  # Устанавливаем User-Agent
-
-        service = Service("C:/chromedriver-win64/chromedriver.exe")
-        self.driver = webdriver.Chrome(service=service, options=driver_options)
         self.url = 'https://diodex.ru/sitemap-iblock-24.xml'
         self.data = []
         self.ind = 0
         self.ua = UserAgent()
+
+    def get_soup(self, url, wait_time=3):
+        response = requests.get(url=url)
+        response.encoding = 'utf-8'
+        soup = BeautifulSoup(response.text, 'lxml')
+        return soup
 
 
     def collect_all_pages(self):
@@ -36,16 +38,14 @@ class Parser:
         soup = BeautifulSoup(response.text, 'xml')
 
         product_urls = [i.find('loc').text for i in soup.find_all('url') if 'product' in i.find('loc').text]
-
-
         return product_urls
 
 
     def parsing_products(self):
 
-        product_urls = self.collect_all_pages()
+        # product_urls = self.collect_all_pages()
 
-        print(f'Всего товаров - {len(product_urls)}')
+        # print(f'Всего товаров - {len(product_urls)}')
         for url in ['https://diodex.ru/catalog/product/vizum-duo-u-80vt/']:
 
             try:
@@ -59,20 +59,15 @@ class Parser:
                 # response = requests.get(url=url, headers=headers, timeout=30)
                 # response.encoding = 'utf-8'
                 # soup = BeautifulSoup(response.text, 'lxml')
-                self.driver.get(url)
-                WebDriverWait(self.driver, 10).until(
-                    EC.presence_of_element_located((By.CSS_SELECTOR, ".card__product-heading"))
-                )
-                html = self.driver.page_source
-                soup = BeautifulSoup(html, 'lxml')
-                url = url
+                soup = self.get_soup(url)
 
                 try:
-                    meta_description = soup
+                    meta_description = ''
                 except:
                     meta_description = ''
-
-                return meta_description
+                scraper = cloudscraper.create_scraper()
+                response = scraper.get("https://diodex.ru/catalog/product/vizum-duo-u-80vt/")
+                return response.text
 
                 try:
                     meta_title = soup.select_one('meta[property="og:title"]').get('content')

@@ -49,6 +49,11 @@ class Parser:
                 soup = BeautifulSoup(response.text, 'lxml')
 
                 url = url
+
+                try:
+                    meta_title = soup.select_one('title').text.strip()
+                except:
+                    meta_title = ''
         #         try:
         #             path = ' > '.join(url.split('/')[-4:])[:-2]
         #         except:
@@ -108,22 +113,23 @@ class Parser:
                 except:
                     properties = {}
 
-                # try:
-                #     images = ''
-                # except:
-                #     images = ''
+                try:
+                    images = soup.select_one('.flex-control-nav.flex-control-thumbs').select('li')
+                except:
+                    images = ''
 
 
                 # Объединяем основные поля и свойства
                 product_data = {
                     'Название': title,
+                    'meta_title': meta_title,
                     'url': url,
                     # 'Путь': path,
                     # 'Категория': category,
                     'Картинка': image,
                     'Артикул': article,
                     'Описание': main_description,
-
+                    'Галерея': images,
                     # 'Цена': price,
                     # 'Доп описание': description,
                     # 'Доступность': availability
